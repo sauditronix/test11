@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>خدمات التفقد الأمنية</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Tahoma, Arial, sans-serif;
+      background: #f3f6fb;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      text-align: center;
+      padding: 16px 12px 8px;
+      background: #ffffffcc;
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #dde4f0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header img {
+      width: 140px;
+      margin-bottom: 8px;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #00457a;
+    }
+    header p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #555;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 12px 24px;
+    }
+    h2 {
+      text-align: right;
+      margin-top: 0;
+    }
+    .service-card {
+      background: #fff;
+      padding: 16px 18px 18px;
+      margin-bottom: 20px;
+      border-radius: 14px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 9px;
+      margin-top: 4px;
+      box-sizing: border-box;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid #c7d3e6;
+      background: #fdfdff;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 2px rgba(0,102,204,0.18);
+    }
+    input[readonly] {
+      background: #eef2fb;
+      color: #444;
+    }
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .btn {
+      margin-top: 12px;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-primary {
+      background: #0066cc;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #004d99;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: #00457a;
+      margin-top: 0;
+      padding-inline: 8px;
+    }
+    .success-msg {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #0a7c2f;
+      display: none;
+    }
+    .preview-img {
+      margin-top: 8px;
+      max-width: 200px;
+      display: none;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    #homePage h2 {
+      text-align: center;
+    }
+    .service-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .service-page {
+      display: none;
+    }
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .hint {
+      font-size: 11px;
+      color: #777;
+      margin-top: 3px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://www.bog.gov.sa/_layouts/15/BOG/asset/img/BOG_Logo.svg" alt="شعار الجهة">
+    <h1>منصة خدمات التفقد الأمنية</h1>
+    <p>تسجيل جولات التفقد لمواقف السيارات، العلم، والمكاتب</p>
+  </header>
+
+  <div class="container">
+    <!-- الصفحة الرئيسية -->
+    <div id="homePage">
+      <h2>اختر الخدمة</h2>
+      <div class="service-buttons">
+        <button class="btn btn-primary" onclick="openPage('parkingPage')">🚗 تفقد مواقف السيارات</button>
+        <button class="btn btn-primary" onclick="openPage('flagPage')">🚩 تفقد العلم</button>
+        <button class="btn btn-primary" onclick="openPage('officePage')">🏢 تفقد المكاتب</button>
+      </div>
+    </div>
+
+    <!-- صفحة تفقد مواقف السيارات -->
+    <div id="parkingPage" class="service-page">
+      <div class="service-card">
+        <div class="top-row">
+          <button class="btn btn-ghost" onclick="backHome()">◀ رجوع</button>
+          <h2>خدمة تفقد مواقف السيارات</h2>
+        </div>
+        <form id="parkingForm">
+          <div class="grid-2">
+            <div>
+              <label>اسم الموظف (المتفقد)</label>
+              <input type="text" name="inspector_name" required>
+            </div>
+            <div>
+              <label>الرقم الوظيفي</label>
+              <input type="text" name="employee_id" required>
+            </div>
+            <div>
+              <label>التاريخ والوقت (تلقائي)</label>
+              <input type="text" name="datetime" id="parkingTime" readonly>
+            </div>
+            <div>
+              <label>رقم الموقف</label>
+              <input type="text" name="slot_number" placeholder="مثال: P12">
+            </div>
+            <div>
+              <label>رقم لوحة السيارة</label>
+              <input type="text" name="plate_number" placeholder="مثال: أ ب ج 1234">
+            </div>
+            <div>
+              <label>منطقة المواقف</label>
+              <input type="text" name="parking_area" placeholder="البوابة الجنوبية - ساحة A">
+            </div>
+            <div>
+              <label>حالة المواقف</label>
+              <select name="parking_status">
+                <option value="">اختر الحالة</option>
+                <option>طبيعي</option>
+                <option>ازدحام</option>
+                <option>مغلق</option>
+                <option>وجود مركبات مهجورة</option>
+              </select>
+            </div>
+          </div>
+
+          <label>صورة من الموقع (الكاميرا)</label>
+          <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'parkingImg')">
+          <img id="parkingImg" class="preview-img" alt="معاينة الصورة">
+          <div class="hint">الصورة للتوثيق البصري فقط، الحفظ الحالي داخل الجهاز.</div>
+
+          <label>ملاحظات إضافية</label>
+          <textarea name="notes" placeholder="أضف أي ملاحظات حول المواقف أو السيارات"></textarea>
+
+          <button type="submit" class="btn btn-primary">💾 حفظ جولة التفقد</button>
+          <div class="success-msg" id="parkingMsg">تم حفظ بيانات تفقد المواقف (محلياً في المتصفح).</div>
+        </form>
+      </div>
+    </div>
+
+    <!-- صفحة تفقد العلم -->
+    <div id="flagPage" class="service-page">
+      <div class="service-card">
+        <div class="top-row">
+          <button class="btn btn-ghost" onclick="backHome()">◀ رجوع</button>
+          <h2>خدمة تفقد العلم</h2>
+        </div>
+        <form id="flagForm">
+          <div class="grid-2">
+            <div>
+              <label>اسم الموظف (المتفقد)</label>
+              <input type="text" name="inspector_name" required>
+            </div>
+            <div>
+              <label>الرقم الوظيفي</label>
+              <input type="text" name="employee_id" required>
+            </div>
+            <div>
+              <label>التاريخ والوقت (تلقائي)</label>
+              <input type="text" name="datetime" id="flagTime" readonly>
+            </div>
+            <div>
+              <label>موقع العلم</label>
+              <input type="text" name="flag_location" placeholder="مثال: مبنى الإدارة الرئيسي - المدخل">
+            </div>
+            <div>
+              <label>حالة العلم</label>
+              <select name="flag_status">
+                <option value="">اختر الحالة</option>
+                <option>مرفوع بشكل صحيح</option>
+                <option>غير مرفوع</option>
+                <option>ممزق / تالف</option>
+                <option>متسخ ويحتاج تنظيف</option>
+              </select>
+            </div>
+            <div>
+              <label>حالة السارية / الإضاءة</label>
+              <select name="pole_status">
+                <option value="">اختر الحالة</option>
+                <option>سليمة</option>
+                <option>خلل في الإضاءة</option>
+                <option>خلل في السارية</option>
+              </select>
+            </div>
+          </div>
+
+          <label>صورة من الموقع (الكاميرا)</label>
+          <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'flagImg')">
+          <img id="flagImg" class="preview-img" alt="معاينة الصورة">
+
+          <label>ملاحظات إضافية</label>
+          <textarea name="notes" placeholder="أضف ملاحظات حول العلم أو محيطه الأمني"></textarea>
+
+          <button type="submit" class="btn btn-primary">💾 حفظ جولة التفقد</button>
+          <div class="success-msg" id="flagMsg">تم حفظ بيانات تفقد العلم (محلياً في المتصفح).</div>
+        </form>
+      </div>
+    </div>
+
+    <!-- صفحة تفقد المكاتب -->
+    <div id="officePage" class="service-page">
+      <div class="service-card">
+        <div class="top-row">
+          <button class="btn btn-ghost" onclick="backHome()">◀ رجوع</button>
+          <h2>خدمة تفقد المكاتب</h2>
+        </div>
+        <form id="officeForm">
+          <div class="grid-2">
+            <div>
+              <label>اسم الموظف (المتفقد)</label>
+              <input type="text" name="inspector_name" required>
+            </div>
+            <div>
+              <label>الرقم الوظيفي</label>
+              <input type="text" name="employee_id" required>
+            </div>
+            <div>
+              <label>التاريخ والوقت (تلقائي)</label>
+              <input type="text" name="datetime" id="officeTime" readonly>
+            </div>
+            <div>
+              <label>رقم المكتب / المبنى</label>
+              <input type="text" name="office_number" placeholder="مثال: مبنى B - مكتب 203">
+            </div>
+            <div>
+              <label>حالة الأبواب</label>
+              <select name="door_status">
+                <option value="">اختر الحالة</option>
+                <option>مغلقة ومؤمنة</option>
+                <option>مفتوحة بدون تواجد موظفين</option>
+                <option>قفل تالف / مكسور</option>
+              </select>
+            </div>
+            <div>
+              <label>حالة الأجهزة الكهربائية</label>
+              <select name="electric_status">
+                <option value="">اختر الحالة</option>
+                <option>مطفأة بالكامل</option>
+                <option>وجود أجهزة تعمل بدون مبرر</option>
+                <option>اشتباه في توصيلات غير آمنة</option>
+              </select>
+            </div>
+            <div>
+              <label>درجة أمان المكتب</label>
+              <select name="security_level">
+                <option value="">اختر الدرجة</option>
+                <option>منخفض</option>
+                <option>متوسط</option>
+                <option>مرتفع</option>
+              </select>
+            </div>
+          </div>
+
+          <label>صورة من الموقع (الكاميرا)</label>
+          <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'officeImg')">
+          <img id="officeImg" class="preview-img" alt="معاينة الصورة">
+
+          <label>ملاحظات إضافية</label>
+          <textarea name="notes" placeholder="أضف ملاحظات حول المكاتب أو الملفات أو الأجهزة"></textarea>
+
+          <button type="submit" class="btn btn-primary">💾 حفظ جولة التفقد</button>
+          <div class="success-msg" id="officeMsg">تم حفظ بيانات تفقد المكاتب (محلياً في المتصفح).</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function previewImage(input, imgId) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.getElementById(imgId);
+        if (!img) return;
+        img.src = reader.result;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function timestamp() {
+      return new Date().toLocaleString('ar-SA');
+    }
+
+    function openPage(pageId) {
+      const home = document.getElementById('homePage');
+      if (home) home.style.display = 'none';
+
+      ['parkingPage', 'flagPage', 'officePage'].forEach(id => {
+        const page = document.getElementById(id);
+        if (page) page.style.display = (id === pageId ? 'block' : 'none');
+      });
+
+      const timeMap = {
+        parkingPage: 'parkingTime',
+        flagPage: 'flagTime',
+        officePage: 'officeTime'
+      };
+      const timeInputId = timeMap[pageId];
+      if (timeInputId) {
+        const input = document.getElementById(timeInputId);
+        if (input) input.value = timestamp();
+      }
+    }
+
+    function backHome() {
+      ['parkingPage', 'flagPage', 'officePage'].forEach(id => {
+        const page = document.getElementById(id);
+        if (page) page.style.display = 'none';
+      });
+      const home = document.getElementById('homePage');
+      if (home) home.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
