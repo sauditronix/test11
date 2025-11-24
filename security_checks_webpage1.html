@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>منصة خدمات التفقد الأمنية</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --primary: #0055a5;
+      --primary-dark: #003d78;
+      --bg: #f3f6fb;
+      --card-bg: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial;
+      background: linear-gradient(180deg, #e3edf9, #f7f9fc);
+      color: #222;
+    }
+
+    .app-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      box-shadow: 0 0 25px rgba(0,0,0,0.08);
+    }
+
+    header {
+      text-align: center;
+      padding: 16px 12px 8px;
+      background: #ffffffcc;
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #dde4f0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header img {
+      width: 110px;
+      margin-bottom: 6px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--primary-dark);
+    }
+
+    header p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #555;
+    }
+
+    main {
+      flex: 1;
+      padding: 12px;
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .service-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 14px 14px 16px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      margin-bottom: 16px;
+    }
+
+    .service-card h2 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      color: var(--primary-dark);
+    }
+
+    .service-card small {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #777;
+    }
+
+    .service-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .service-btn {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 12px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      cursor: pointer;
+      text-align: right;
+    }
+
+    .service-btn span.title {
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .service-btn span.subtitle {
+      display: block;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .service-btn .icon {
+      font-size: 20px;
+      margin-left: 4px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      margin-top: 4px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid #c7d3e6;
+      font-size: 14px;
+      background: #fdfdff;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(0,85,165,0.12);
+    }
+
+    input[readonly] {
+      background: #eef2fb;
+      color: #444;
+    }
+
+    textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      margin-top: 14px;
+    }
+
+    .btn-primary:active {
+      background: var(--primary-dark);
+      transform: translateY(1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--primary-dark);
+      padding-inline: 8px;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .preview-img {
+      margin-top: 8px;
+      max-width: 100%;
+      border-radius: 12px;
+      border: 1px solid #d2d7e5;
+      display: none;
+    }
+
+    .success-msg {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #0a7c2f;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .kpi-card {
+      background: #f7f9ff;
+      border-radius: 12px;
+      padding: 10px;
+      border: 1px solid #dde4f7;
+    }
+
+    .kpi-label {
+      font-weight: 600;
+      color: #334;
+    }
+
+    .kpi-value {
+      display: block;
+      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 10px;
+      padding: 6px 8px 10px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <img src="https://www.bog.gov.sa/_layouts/15/BOG/asset/img/BOG_Logo.svg" alt="شعار الجهة">
+      <h1>منصة خدمات التفقد الأمنية</h1>
+      <p>تسجيل جولات التفقد ميدانياً عبر الجوال</p>
+    </header>
+
+    <main>
+      <!-- الشاشة الرئيسية -->
+      <section id="homeScreen" class="screen active">
+        <div class="service-card">
+          <h2>الخدمات المتاحة</h2>
+          <small>اختر نوع التفقد أو استعرض لوحة المؤشرات</small>
+          <div class="service-list">
+            <button class="service-btn" onclick="openScreen('dashboardScreen')">
+              <div>
+                <span class="title">لوحة المؤشرات (KPI)</span>
+                <span class="subtitle">إحصائيات الجولات المسجلة على الجهاز</span>
+              </div>
+              <div class="icon">📊</div>
+            </button>
+
+            <button class="service-btn" onclick="openScreen('parkingScreen')">
+              <div>
+                <span class="title">تفقد مواقف السيارات</span>
+                <span class="subtitle">حالة المواقف، أرقام المواقف ولوحات السيارات</span>
+              </div>
+              <div class="icon">🚗</div>
+            </button>
+
+            <button class="service-btn" onclick="openScreen('flagScreen')">
+              <div>
+                <span class="title">تفقد العلم</span>
+                <span class="subtitle">العلم، السارية، والإضاءة المحيطة</span>
+              </div>
+              <div class="icon">🚩</div>
+            </button>
+
+            <button class="service-btn" onclick="openScreen('officeScreen')">
+              <div>
+                <span class="title">تفقد المكاتب</span>
+                <span class="subtitle">الأبواب، الأجهزة، ودرجة الأمان</span>
+              </div>
+              <div class="icon">🏢</div>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- شاشة الداشبورد -->
+      <section id="dashboardScreen" class="screen">
+        <div class="service-card">
+          <div class="top-row">
+            <button class="btn btn-ghost" onclick="openScreen('homeScreen')">◀ رجوع</button>
+            <h2>لوحة مؤشرات الأداء (KPI)</h2>
+          </div>
+          <small>المؤشرات تعتمد على الجولات المخزنة محلياً في هذا الجهاز</small>
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-label">عدد جولات تفقد المواقف</span>
+              <span class="kpi-value" id="kpiParking">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">عدد جولات تفقد العلم</span>
+              <span class="kpi-value" id="kpiFlag">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">عدد جولات تفقد المكاتب</span>
+              <span class="kpi-value" id="kpiOffice">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">إجمالي الجولات</span>
+              <span class="kpi-value" id="kpiTotal">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- تفقد مواقف السيارات -->
+      <section id="parkingScreen" class="screen">
+        <div class="service-card">
+          <div class="top-row">
+            <button class="btn btn-ghost" onclick="openScreen('homeScreen')">◀ رجوع</button>
+            <h2>تفقد مواقف السيارات</h2>
+          </div>
+          <small>سجل حالة المواقف والمركبات مع توثيق وقت الزيارة</small>
+
+          <form id="parkingForm">
+            <label>اسم الموظف (المتفقد)</label>
+            <input type="text" name="inspector_name" required>
+
+            <label>الرقم الوظيفي</label>
+            <input type="text" name="employee_id" required>
+
+            <label>التاريخ والوقت (يحدد تلقائياً عند الحفظ)</label>
+            <input type="text" id="parkingTime" name="datetime" readonly>
+
+            <label>رقم الموقف</label>
+            <input type="text" name="slot_number" placeholder="مثال: P12">
+
+            <label>رقم لوحة السيارة</label>
+            <input type="text" name="plate_number" placeholder="مثال: أ ب ج 1234">
+
+            <label>منطقة المواقف</label>
+            <input type="text" name="parking_area" placeholder="مثال: البوابة الجنوبية - ساحة A">
+
+            <label>حالة المواقف</label>
+            <select name="parking_status">
+              <option value="">اختر الحالة</option>
+              <option>طبيعي</option>
+              <option>ازدحام</option>
+              <option>مغلق</option>
+              <option>وجود مركبات مهجورة</option>
+            </select>
+
+            <label>صورة من الموقع (الكاميرا)</label>
+            <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'parkingImg')">
+            <img id="parkingImg" class="preview-img" alt="معاينة الصورة">
+            <div class="hint">الصورة اختيارية، وتستخدم فقط للتوثيق البصري على الجهاز.</div>
+
+            <label>ملاحظات إضافية</label>
+            <textarea name="notes" placeholder="أضف أي ملاحظات حول المواقف أو السيارات"></textarea>
+
+            <button type="submit" class="btn btn-primary">💾 حفظ جولة تفقد المواقف</button>
+            <div class="success-msg" id="parkingMsg"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- تفقد العلم -->
+      <section id="flagScreen" class="screen">
+        <div class="service-card">
+          <div class="top-row">
+            <button class="btn btn-ghost" onclick="openScreen('homeScreen')">◀ رجوع</button>
+            <h2>تفقد العلم</h2>
+          </div>
+          <small>متابعة حالة العلم والسارية والإضاءة المحيطة</small>
+
+          <form id="flagForm">
+            <label>اسم الموظف (المتفقد)</label>
+            <input type="text" name="inspector_name" required>
+
+            <label>الرقم الوظيفي</label>
+            <input type="text" name="employee_id" required>
+
+            <label>التاريخ والوقت (يحدد تلقائياً عند الحفظ)</label>
+            <input type="text" id="flagTime" name="datetime" readonly>
+
+            <label>موقع العلم</label>
+            <input type="text" name="flag_location" placeholder="مثال: مبنى الإدارة الرئيسي - المدخل">
+
+            <label>حالة العلم</label>
+            <select name="flag_status">
+              <option value="">اختر الحالة</option>
+              <option>مرفوع بشكل صحيح</option>
+              <option>غير مرفوع</option>
+              <option>ممزق / تالف</option>
+              <option>متسخ ويحتاج تنظيف</option>
+            </select>
+
+            <label>حالة السارية / الإضاءة</label>
+            <select name="pole_status">
+              <option value="">اختر الحالة</option>
+              <option>سليمة</option>
+              <option>خلل في الإضاءة</option>
+              <option>خلل في السارية</option>
+            </select>
+
+            <label>صورة من الموقع (الكاميرا)</label>
+            <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'flagImg')">
+            <img id="flagImg" class="preview-img" alt="معاينة الصورة">
+
+            <label>ملاحظات إضافية</label>
+            <textarea name="notes" placeholder="أضف ملاحظات حول العلم أو محيطه الأمني"></textarea>
+
+            <button type="submit" class="btn btn-primary">💾 حفظ جولة تفقد العلم</button>
+            <div class="success-msg" id="flagMsg"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- تفقد المكاتب -->
+      <section id="officeScreen" class="screen">
+        <div class="service-card">
+          <div class="top-row">
+            <button class="btn btn-ghost" onclick="openScreen('homeScreen')">◀ رجوع</button>
+            <h2>تفقد المكاتب</h2>
+          </div>
+          <small>التأكد من إغلاق المكاتب وسلامة الأجهزة ودرجة الأمان</small>
+
+          <form id="officeForm">
+            <label>اسم الموظف (المتفقد)</label>
+            <input type="text" name="inspector_name" required>
+
+            <label>الرقم الوظيفي</label>
+            <input type="text" name="employee_id" required>
+
+            <label>التاريخ والوقت (يحدد تلقائياً عند الحفظ)</label>
+            <input type="text" id="officeTime" name="datetime" readonly>
+
+            <label>رقم المكتب / المبنى</label>
+            <input type="text" name="office_number" placeholder="مثال: مبنى B - مكتب 203">
+
+            <label>حالة الأبواب</label>
+            <select name="door_status">
+              <option value="">اختر الحالة</option>
+              <option>مغلقة ومؤمنة</option>
+              <option>مفتوحة بدون تواجد موظفين</option>
+              <option>قفل تالف / مكسور</option>
+            </select>
+
+            <label>حالة الأجهزة الكهربائية</label>
+            <select name="electric_status">
+              <option value="">اختر الحالة</option>
+              <option>مطفأة بالكامل</option>
+              <option>وجود أجهزة تعمل بدون مبرر</option>
+              <option>اشتباه في توصيلات غير آمنة</option>
+            </select>
+
+            <label>درجة أمان المكتب</label>
+            <select name="security_level">
+              <option value="">اختر الدرجة</option>
+              <option>منخفض</option>
+              <option>متوسط</option>
+              <option>مرتفع</option>
+            </select>
+
+            <label>صورة من الموقع (الكاميرا)</label>
+            <input type="file" accept="image/*" capture="environment" onchange="previewImage(this, 'officeImg')">
+            <img id="officeImg" class="preview-img" alt="معاينة الصورة">
+
+            <label>ملاحظات إضافية</label>
+            <textarea name="notes" placeholder="أضف ملاحظات حول المكاتب أو الملفات أو الأجهزة"></textarea>
+
+            <button type="submit" class="btn btn-primary">💾 حفظ جولة تفقد المكاتب</button>
+            <div class="success-msg" id="officeMsg"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      البيانات تُخزن محلياً في المتصفح حالياً. يمكن ربطها لاحقاً بنظام تفقد مركزي وقاعدة بيانات.
+    </footer>
+  </div>
+
+  <script>
+    function openScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      const screen = document.getElementById(id);
+      if (screen) screen.classList.add('active');
+
+      const timeMap = {
+        parkingScreen: 'parkingTime',
+        flagScreen: 'flagTime',
+        officeScreen: 'officeTime'
+      };
+      const timeId = timeMap[id];
+      if (timeId) {
+        const el = document.getElementById(timeId);
+        if (el) el.value = nowString();
+      }
+
+      if (id === 'dashboardScreen') {
+        updateDashboard();
+      }
+    }
+
+    function previewImage(input, imgId) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = document.getElementById(imgId);
+        if (!img) return;
+        img.src = reader.result;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function nowString() {
+      return new Date().toLocaleString('ar-SA');
+    }
+
+    function handleForm(formId, storageKey, timeInputId, msgId) {
+      const form = document.getElementById(formId);
+      const msg = document.getElementById(msgId);
+      const timeInput = document.getElementById(timeInputId);
+
+      if (!form) return;
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const ts = nowString();
+        if (timeInput) timeInput.value = ts;
+
+        const data = {};
+        const fields = form.querySelectorAll('input, select, textarea');
+        fields.forEach(el => {
+          if (!el.name) return;
+          if (el.type === 'file') return;
+          data[el.name] = el.value;
+        });
+
+        const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        list.push(data);
+        localStorage.setItem(storageKey, JSON.stringify(list));
+
+        if (msg) {
+          msg.textContent = 'تم حفظ جولة التفقد بنجاح في هذا الجهاز (' + ts + ').';
+          setTimeout(() => { msg.textContent = ''; }, 4000);
+        }
+
+        form.reset();
+        if (timeInput) timeInput.value = '';
+        const imgPreview = form.querySelector('.preview-img');
+        if (imgPreview) {
+          imgPreview.style.display = 'none';
+          imgPreview.src = '';
+        }
+      });
+    }
+
+    function updateDashboard() {
+      const p = JSON.parse(localStorage.getItem('parking_checks') || '[]').length;
+      const f = JSON.parse(localStorage.getItem('flag_checks') || '[]').length;
+      const o = JSON.parse(localStorage.getItem('office_checks') || '[]').length;
+      const total = p + f + o;
+
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      setText('kpiParking', p);
+      setText('kpiFlag', f);
+      setText('kpiOffice', o);
+      setText('kpiTotal', total);
+    }
+
+    // تفعيل معالجة النماذج
+    handleForm('parkingForm', 'parking_checks', 'parkingTime', 'parkingMsg');
+    handleForm('flagForm', 'flag_checks', 'flagTime', 'flagMsg');
+    handleForm('officeForm', 'office_checks', 'officeTime', 'officeMsg');
+  </script>
+</body>
+</html>
