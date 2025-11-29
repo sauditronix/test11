@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IoT Sensor Lab - Multi-User</title>
+    <title>IoT Sensor Lab - Full Duplex</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -22,6 +22,15 @@
         /* Toggle Switch Styles */
         input:checked ~ .dot { transform: translateX(100%); }
         input:checked ~ .block { background-color: #10B981; }
+        
+        /* Flash animation for received updates */
+        @keyframes flash-green {
+            0% { background-color: rgba(16, 185, 129, 0.5); }
+            100% { background-color: transparent; }
+        }
+        .update-flash {
+            animation: flash-green 1s ease-out;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen font-sans flex flex-col">
@@ -30,10 +39,10 @@
     <header class="bg-gray-800 border-b border-gray-700 p-4 shadow-lg sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-satellite-dish text-green-500 text-2xl"></i>
+                <i class="fa-solid fa-tower-broadcast text-blue-500 text-2xl"></i>
                 <div>
                     <h1 class="text-xl font-bold leading-tight">IoT Lab Simulator</h1>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Multi-User Edition</p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide">Pub/Sub Edition</p>
                 </div>
             </div>
             
@@ -63,7 +72,7 @@
                     <div class="relative">
                         <i class="fa-solid fa-globe absolute left-3 top-3 text-gray-500 text-xs"></i>
                         <input type="text" id="broker-host" value="wss://broker.emqx.io:8084/mqtt" 
-                            class="w-full bg-gray-700 border border-gray-600 rounded pl-8 pr-3 py-2 text-sm focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none font-mono text-gray-300 placeholder-gray-500">
+                            class="w-full bg-gray-700 border border-gray-600 rounded pl-8 pr-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-mono text-gray-300 placeholder-gray-500">
                     </div>
                 </div>
 
@@ -101,7 +110,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
             <!-- Temperature Card -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col">
+            <div id="card-temp" class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col transition-colors duration-500">
                 <div class="bg-gradient-to-r from-orange-900/50 to-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="bg-orange-500/20 p-2 rounded text-orange-400"><i class="fa-solid fa-temperature-half"></i></div>
@@ -119,7 +128,9 @@
                 </div>
                 
                 <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
-                    <div class="text-center">
+                    <div class="text-center relative">
+                         <!-- Indicator for incoming data -->
+                         <div id="temp-indicator" class="hidden absolute top-0 right-0 text-green-500 text-xs animate-bounce"><i class="fa-solid fa-download"></i> Recv</div>
                         <span class="text-5xl font-mono font-bold text-orange-400 tracking-tighter"><span id="temp-display">24.5</span><span class="text-2xl text-gray-500 ml-1">°C</span></span>
                     </div>
                     <input type="range" id="temp-slider" min="-10" max="60" step="0.5" value="24.5" 
@@ -127,7 +138,7 @@
                         oninput="updateDisplay('temp', this.value)">
                     
                     <div>
-                        <label class="text-[10px] uppercase text-gray-500 font-bold">Target Topic</label>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold">Topic</label>
                         <input type="text" id="temp-topic" readonly class="w-full bg-gray-900/50 text-gray-400 text-xs font-mono border border-gray-700 rounded px-2 py-1 mb-2 focus:outline-none cursor-not-allowed">
                         
                         <button onclick="publishManual('temp')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 rounded transition-colors flex justify-center items-center gap-2 text-sm border border-gray-600">
@@ -138,7 +149,7 @@
             </div>
 
             <!-- Humidity Card -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col">
+            <div id="card-hum" class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col transition-colors duration-500">
                 <div class="bg-gradient-to-r from-blue-900/50 to-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="bg-blue-500/20 p-2 rounded text-blue-400"><i class="fa-solid fa-droplet"></i></div>
@@ -155,7 +166,8 @@
                 </div>
                 
                 <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
-                    <div class="text-center">
+                    <div class="text-center relative">
+                        <div id="hum-indicator" class="hidden absolute top-0 right-0 text-green-500 text-xs animate-bounce"><i class="fa-solid fa-download"></i> Recv</div>
                         <span class="text-5xl font-mono font-bold text-blue-400 tracking-tighter"><span id="hum-display">45</span><span class="text-2xl text-gray-500 ml-1">%</span></span>
                     </div>
                     <input type="range" id="hum-slider" min="0" max="100" step="1" value="45" 
@@ -163,7 +175,7 @@
                         oninput="updateDisplay('hum', this.value)">
                     
                     <div>
-                        <label class="text-[10px] uppercase text-gray-500 font-bold">Target Topic</label>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold">Topic</label>
                         <input type="text" id="hum-topic" readonly class="w-full bg-gray-900/50 text-gray-400 text-xs font-mono border border-gray-700 rounded px-2 py-1 mb-2 focus:outline-none cursor-not-allowed">
                         
                         <button onclick="publishManual('hum')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 rounded transition-colors flex justify-center items-center gap-2 text-sm border border-gray-600">
@@ -174,7 +186,7 @@
             </div>
 
             <!-- Door Sensor Card -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col">
+            <div id="card-door" class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl overflow-hidden flex flex-col transition-colors duration-500">
                 <div class="bg-gradient-to-r from-purple-900/50 to-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
                     <div class="flex items-center gap-3">
                         <div class="bg-purple-500/20 p-2 rounded text-purple-400"><i class="fa-solid fa-door-open"></i></div>
@@ -191,7 +203,8 @@
                 </div>
                 
                 <div class="p-5 flex-grow flex flex-col justify-between space-y-4">
-                    <div class="flex justify-center py-2">
+                    <div class="flex justify-center py-2 relative">
+                        <div id="door-indicator" class="hidden absolute top-0 right-0 text-green-500 text-xs animate-bounce"><i class="fa-solid fa-download"></i> Recv</div>
                         <button id="door-btn" onclick="toggleDoor()" class="group relative w-24 h-24 rounded-full bg-gray-700 border-4 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all duration-300">
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
                                 <i id="door-icon" class="fa-solid fa-door-closed text-3xl text-gray-200 mb-1 transition-transform group-hover:scale-110"></i>
@@ -202,7 +215,7 @@
                     </div>
                     
                     <div>
-                        <label class="text-[10px] uppercase text-gray-500 font-bold">Target Topic</label>
+                        <label class="text-[10px] uppercase text-gray-500 font-bold">Topic</label>
                         <input type="text" id="door-topic" readonly class="w-full bg-gray-900/50 text-gray-400 text-xs font-mono border border-gray-700 rounded px-2 py-1 mb-2 focus:outline-none cursor-not-allowed">
                         
                         <button onclick="publishManual('door')" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 rounded transition-colors flex justify-center items-center gap-2 text-sm border border-gray-600">
@@ -242,21 +255,16 @@
 
         // --- Initialization ---
         window.onload = function() {
-            // Generate a random trainee ID for demonstration, but user can change it
             const randomSuffix = Math.floor(Math.random() * 100);
             document.getElementById('trainee-id').value = "Trainee" + randomSuffix;
-            
-            updateTopics(); // Run once to set initial topics
+            updateTopics();
         };
 
         // --- Core Logic: Update Topics Based on Trainee Name ---
         function updateTopics() {
             const rawId = document.getElementById('trainee-id').value;
-            
-            // Sanitize: Replace spaces with underscores, remove special chars
             const safeId = rawId.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '') || "Anonymous";
             
-            // Visual feedback of what is happening
             document.getElementById('temp-topic').value = `lab/${safeId}/temp`;
             document.getElementById('hum-topic').value  = `lab/${safeId}/humidity`;
             document.getElementById('door-topic').value = `lab/${safeId}/door`;
@@ -285,7 +293,7 @@
             try {
                 // MQTT.js Connection
                 client = mqtt.connect(host, {
-                    clientId: clientId, // Technical ID for the broker connection
+                    clientId: clientId, 
                     clean: true,
                     connectTimeout: 4000,
                 });
@@ -300,19 +308,24 @@
                     btn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
                     btn.classList.add('bg-red-600', 'hover:bg-red-500');
                     
-                    // Lock Trainee ID while connected to prevent confusion
                     document.getElementById('trainee-id').disabled = true;
                     document.getElementById('trainee-id').classList.add('opacity-50', 'cursor-not-allowed');
-                    
-                    // Auto-close settings
                     document.getElementById('settings-panel').classList.add('hidden');
                     document.getElementById('settings-chevron').classList.replace('fa-chevron-up', 'fa-chevron-down');
+
+                    // **SUBSCRIBE TO TOPICS**
+                    subscribeToSensors();
+                });
+
+                // **HANDLE INCOMING MESSAGES**
+                client.on('message', (topic, message) => {
+                    handleMessage(topic, message);
                 });
 
                 client.on('error', (err) => {
                     log(`Connection Error: ${err.message}`, 'error');
                     updateStatus('error');
-                    disconnect(); // Clean up UI
+                    disconnect(); 
                 });
                 
                 client.on('offline', () => {
@@ -323,6 +336,69 @@
                 log(`Config Error: ${e.message}`, 'error');
                 updateStatus('error');
             }
+        }
+
+        function subscribeToSensors() {
+            const tTemp = document.getElementById('temp-topic').value;
+            const tHum = document.getElementById('hum-topic').value;
+            const tDoor = document.getElementById('door-topic').value;
+            
+            const topics = [tTemp, tHum, tDoor];
+            
+            client.subscribe(topics, (err) => {
+                if(!err) {
+                    log(`Subscribed to: ${topics.join(', ')}`, 'info');
+                } else {
+                    log(`Subscription failed: ${err.message}`, 'error');
+                }
+            });
+        }
+
+        function handleMessage(topic, message) {
+            const tTemp = document.getElementById('temp-topic').value;
+            const tHum = document.getElementById('hum-topic').value;
+            const tDoor = document.getElementById('door-topic').value;
+            
+            const msgStr = message.toString();
+            log(`[RECV] ${topic}: ${msgStr}`, 'in');
+
+            try {
+                const data = JSON.parse(msgStr);
+                
+                if (topic === tTemp) {
+                    // Update UI if value exists and is different (or just update always)
+                    if (data.value !== undefined) {
+                        document.getElementById('temp-slider').value = data.value;
+                        document.getElementById('temp-display').innerText = data.value;
+                        highlightUpdate('temp');
+                    }
+                } else if (topic === tHum) {
+                    if (data.value !== undefined) {
+                        document.getElementById('hum-slider').value = data.value;
+                        document.getElementById('hum-display').innerText = data.value;
+                        highlightUpdate('hum');
+                    }
+                } else if (topic === tDoor) {
+                    if (data.status !== undefined) {
+                        setDoorUI(data.status);
+                        highlightUpdate('door');
+                    }
+                }
+            } catch (e) {
+                log(`Failed to parse JSON from ${topic}`, 'warning');
+            }
+        }
+
+        function highlightUpdate(type) {
+            // Visual feedback that data came from outside (or loopback)
+            const ind = document.getElementById(`${type}-indicator`);
+            ind.classList.remove('hidden');
+            setTimeout(() => ind.classList.add('hidden'), 1000);
+            
+            // Flash card border
+            const card = document.getElementById(`card-${type}`);
+            card.classList.add('border-green-500');
+            setTimeout(() => card.classList.remove('border-green-500'), 500);
         }
 
         function disconnect() {
@@ -337,13 +413,11 @@
             updateStatus('disconnected');
             log('Disconnected from broker.', 'warning');
             
-            // Reset UI
             const btn = document.getElementById('connect-btn');
             btn.innerHTML = `<i class="fa-solid fa-plug"></i> Connect`;
             btn.classList.add('bg-blue-600', 'hover:bg-blue-500');
             btn.classList.remove('bg-red-600', 'hover:bg-red-500');
             
-            // Unlock ID
             document.getElementById('trainee-id').disabled = false;
             document.getElementById('trainee-id').classList.remove('opacity-50', 'cursor-not-allowed');
         }
@@ -375,23 +449,45 @@
             
             client.publish(topic, jsonString, { qos: 0, retain: false }, (err) => {
                 if (err) log(`Publish Failed: ${err}`, 'error');
-                else log(`[${topic}] -> ${jsonString}`, 'out');
+                else log(`[SEND] ${topic}: ${jsonString}`, 'out');
             });
         }
 
         // --- UI & Interactions ---
         function updateDisplay(type, val) {
+            // Only update text locally, don't publish yet (publish is via button or auto)
             document.getElementById(`${type}-display`).innerText = val;
         }
 
         function toggleDoor() {
+            // This function creates the user intent to change the door
+            // It updates the hidden value, then calls publish, which goes to broker,
+            // comes back via subscription, and THEN calls setDoorUI to visually flip it.
+            // For smoother UX, we can flip locally immediately, but waiting for msg proves connection.
+            // Let's flip locally for responsiveness, loopback will just confirm it.
+            
             const valInput = document.getElementById('door-value');
+            const newState = (valInput.value === 'CLOSED') ? 'OPEN' : 'CLOSED';
+            valInput.value = newState;
+            
+            // We do NOT update the UI icon here if we want to rely purely on MQTT loopback
+            // But to avoid confusion if disconnected, we usually update UI. 
+            // In this "Full Duplex" mode, let's update UI to show intent, then publish.
+            setDoorUI(newState);
+            
+            // Actually, if we are in manual mode, user clicks button -> toggles value -> then clicks "Send".
+            // If the user clicks the big door button, they expect it to change state.
+        }
+        
+        function setDoorUI(state) {
             const btn = document.getElementById('door-btn');
             const icon = document.getElementById('door-icon');
             const txt = document.getElementById('door-text');
+            const valInput = document.getElementById('door-value');
             
-            if (valInput.value === 'CLOSED') {
-                valInput.value = 'OPEN';
+            valInput.value = state; // Ensure input matches
+            
+            if (state === 'OPEN') {
                 txt.innerText = 'Open';
                 txt.classList.replace('text-green-400', 'text-red-400');
                 btn.classList.replace('border-green-500', 'border-red-500');
@@ -400,7 +496,6 @@
                 icon.classList.remove('text-gray-200');
                 icon.classList.add('text-red-200');
             } else {
-                valInput.value = 'CLOSED';
                 txt.innerText = 'Closed';
                 txt.classList.replace('text-red-400', 'text-green-400');
                 btn.classList.replace('border-red-500', 'border-green-500');
@@ -429,12 +524,8 @@
             }
 
             if (chk.checked) {
-                // Get interval logic
                 let intervalSec = document.getElementById('auto-interval').value;
-                if(intervalSec < 1) { 
-                    intervalSec = 1; 
-                    document.getElementById('auto-interval').value = 1;
-                }
+                if(intervalSec < 1) { intervalSec = 1; document.getElementById('auto-interval').value = 1; }
                 const ms = intervalSec * 1000;
 
                 log(`Starting auto-stream for ${type} (Every ${intervalSec}s)...`, 'info');
@@ -448,20 +539,22 @@
         function simulate(type) {
             if(type === 'temp') {
                 const current = parseFloat(document.getElementById('temp-slider').value);
-                // Jitter value by +/- 0.5
                 let next = current + (Math.random() > 0.5 ? 0.5 : -0.5);
                 if(next > 60) next = 60; if(next < -10) next = -10;
+                // Note: We don't update UI here. We publish. Subscription updates UI.
+                // But we update slider value so next iteration is smooth.
                 document.getElementById('temp-slider').value = next.toFixed(1);
-                updateDisplay('temp', next.toFixed(1));
             } else if (type === 'hum') {
                 const current = parseInt(document.getElementById('hum-slider').value);
                 let next = current + (Math.random() > 0.5 ? 2 : -2);
                 if(next > 100) next = 100; if(next < 0) next = 0;
                 document.getElementById('hum-slider').value = next;
-                updateDisplay('hum', next);
             } else if (type === 'door') {
-                // Small chance to open/close
-                if(Math.random() > 0.85) toggleDoor();
+                if(Math.random() > 0.85) {
+                   // Randomly toggle door state internal value for next publish
+                   const valInput = document.getElementById('door-value');
+                   valInput.value = (valInput.value === 'CLOSED') ? 'OPEN' : 'CLOSED';
+                }
             }
             publishManual(type);
         }
@@ -471,13 +564,16 @@
             const box = document.getElementById('console-output');
             const div = document.createElement('div');
             const time = new Date().toLocaleTimeString('en-US', {hour12:false});
-            div.innerHTML = `<span class="text-gray-600 select-none mr-2">[${time}]</span> ${msg}`;
             
-            if(type === 'error') div.className = "text-red-400 font-bold";
-            else if(type === 'success') div.className = "text-green-400 font-bold";
-            else if(type === 'warning') div.className = "text-yellow-400";
-            else if(type === 'out') div.className = "text-cyan-300";
-            else if(type === 'info') div.className = "text-gray-500 italic";
+            let colorClass = "text-gray-300";
+            if(type === 'error') colorClass = "text-red-400 font-bold";
+            else if(type === 'success') colorClass = "text-green-400 font-bold";
+            else if(type === 'warning') colorClass = "text-yellow-400";
+            else if(type === 'out') colorClass = "text-cyan-300";
+            else if(type === 'in') colorClass = "text-purple-300"; // Incoming
+            else if(type === 'info') colorClass = "text-gray-500 italic";
+            
+            div.innerHTML = `<span class="text-gray-600 select-none mr-2">[${time}]</span> <span class="${colorClass}">${msg}</span>`;
             
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
