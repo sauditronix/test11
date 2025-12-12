@@ -1,0 +1,690 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, signInAnonymously, onAuthStateChanged, 
+  signInWithCustomToken // تم إضافة استيراد الرمز المخصص
+} from 'firebase/auth';
+import { 
+  getFirestore, collection, addDoc, onSnapshot, 
+  doc, updateDoc, serverTimestamp 
+} from 'firebase/firestore';
+import { 
+  Microscope, FlaskConical, Calendar, Clock, 
+  CheckCircle, AlertCircle, LogOut, User, 
+  ClipboardList, Plus, TestTube, XCircle
+} from 'lucide-react';
+
+// --- Firebase Configuration & Setup ---
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+// --- Constants & Data ---
+const COURSES = [
+  { id: 'bio101', name: 'أحياء عامة 101', defaultItems: ['ميكروسكوب ضوئي', 'شرائح جاهزة', 'قفازات لاتكس', 'محلول ملحي'] },
+  { id: 'micro', name: 'أحياء دقيقة (Microbiology)', defaultItems: ['حاضنة (Incubator)', 'أطباق بتري', 'موقد بنسن', 'صبغة جرام'] },
+  { id: 'biochem', name: 'كيمياء حيوية', defaultItems: ['جهاز طرد مركزي', 'ماصات (Pipettes)', 'أنابيب اختبار', 'كاشف بندكت'] },
+];
+
+const LABS = ['معمل أ (B101)', 'معمل ب (B102)', 'معمل الأبحاث المتقدمة'];
+
+// --- Main Component ---
+export default function BioLabSystem() {
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+  const [authReady, setAuthReady] = useState(false); 
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    // 1. دالة تسجيل الدخول القوية: تستخدم الرمز المخصص أولاً ثم المجهول
+    const attemptSignIn = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          // استخدام الرمز المخصص
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          // استخدام الدخول المجهول كخيار احتياطي
+          await signInAnonymously(auth);
+        }
+      } catch (error) {
+        console.error("Firebase Sign-in Failed:", error);
+        // لا نحتاج لتعيين authReady هنا، فـ onAuthStateChanged سيقوم بذلك
+      }
+    };
+    
+    // 2. الاستماع لتغير حالة المصادقة (وهي التي تحدد حالة التطبيق النهائية)
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (isMounted) {
+        setUser(u);
+        setAuthReady(true); // تم تعيينها بعد اكتمال الفحص الأول
+      }
+    });
+
+    // 3. بدء عملية تسجيل الدخول فوراً
+    attemptSignIn();
+    
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // 1. شاشة التحميل الأولية: تظهر حتى تكتمل المصادقة
+  if (!authReady) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-50 text-emerald-600 gap-4" dir="rtl">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      <p className="font-bold">جاري الاتصال بالنظام وتجهيز المصادقة...</p>
+    </div>
+  );
+  
+  // 2. شاشة فشل المصادقة الحرج: authReady=true ولكن user=null
+  // هذا يعني أن محاولة تسجيل الدخول فشلت بشكل نهائي.
+  if (!user) {
+    return (
+        <div className="flex flex-col items-center justify-center h-screen bg-gray-50 text-red-600 gap-4 p-4" dir="rtl">
+            <AlertCircle size={40} />
+            <h2 className="text-2xl font-bold text-red-700 mt-4">فشل المصادقة الحرج!</h2>
+            <p className="text-gray-500 text-center max-w-md">
+              لم نتمكن من تسجيل دخولك إلى النظام بسبب خطأ في المصادقة. 
+              يرجى التأكد من استقرار اتصالك بالإنترنت.
+            </p>
+            <p className="text-sm text-gray-400 mt-2">
+              (الحل: تحديث الصفحة للمحاولة مجدداً)
+            </p>
+            <button 
+                onClick={() => window.location.reload()}
+                className="bg-red-500 text-white px-6 py-3 mt-4 rounded-xl font-bold hover:bg-red-600 transition-colors shadow-lg"
+            >
+                تحديث الصفحة
+            </button>
+        </div>
+    );
+  }
+
+
+  // 3. شاشة اختيار الدور (تظهر فقط عند اكتمال المصادقة ووجود المستخدم)
+  if (!role) {
+    return <LoginPage setRole={setRole} />;
+  }
+
+  // 4. لوحات التحكم (الآن نضمن أن المستخدم مسجل دخوله ودوره محدد)
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-right" dir="rtl">
+      <Navbar role={role} setRole={setRole} />
+      <div className="container mx-auto p-4 max-w-5xl">
+        {role === 'teacher' ? (
+          <TeacherDashboard user={user} />
+        ) : (
+          <TechnicianDashboard user={user} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- Sub-Components ---
+
+function Navbar({ role, setRole }) {
+  return (
+    <nav className="bg-emerald-700 text-white shadow-lg sticky top-0 z-50">
+      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          {/* شعار جامعة طيبة في شريط التنقل */}
+          <img 
+            src="https://www.taibahu.edu.sa/themes/custom/taiu_saud/logo.svg"
+            alt="شعار جامعة طيبة"
+            className="h-9 w-auto bg-white p-1 rounded-md shadow-md" 
+            onError={(e) => { 
+                e.target.onerror = null; 
+                e.target.src = 'https://placehold.co/120x36/ffffff/000000?text=Logo+Error'; 
+            }}
+          />
+          {/* عنوان التطبيق */}
+          <div className="flex items-center gap-2">
+            <FlaskConical className="h-6 w-6" />
+            <h1 className="text-xl font-bold hidden md:block">نظام إدارة معامل البايو</h1>
+            <h1 className="text-xl font-bold md:hidden">معامل البايو</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm bg-emerald-800 px-3 py-1 rounded-full border border-emerald-600 shadow-sm">
+            {role === 'teacher' ? 'د. عضو هيئة تدريس' : 'فني المختبر'}
+          </span>
+          <button 
+            onClick={() => setRole(null)}
+            className="flex items-center gap-1 text-sm bg-emerald-900/30 hover:bg-emerald-900/50 px-3 py-1 rounded-lg transition-colors"
+          >
+            <LogOut size={16} />
+            <span className="hidden sm:inline">خروج</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function LoginPage({ setRole }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4" dir="rtl">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center border border-emerald-100">
+        
+        {/* شعار جامعة طيبة في الصفحة الرئيسية */}
+        <img 
+          src="https://www.taibahu.edu.sa/themes/custom/taiu_saud/logo.svg"
+          alt="شعار جامعة طيبة"
+          className="h-16 w-auto mx-auto mb-4" 
+          onError={(e) => { 
+              e.target.onerror = null; 
+              e.target.src = 'https://placehold.co/150x60/ffffff/000000?text=Taibah+Logo'; 
+          }}
+        />
+
+        <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+          <Microscope className="h-10 w-10 text-emerald-600" />
+        </div>
+        
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">مرحباً بك</h2>
+        <p className="text-gray-500 mb-8">نظام حجز وتجهيز معامل قسم الأحياء</p>
+        
+        <div className="space-y-4">
+          <button 
+            onClick={() => setRole('teacher')}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] shadow-md group"
+          >
+            <div className="bg-white/20 p-2 rounded-lg group-hover:bg-white/30 transition-colors">
+              <User className="h-5 w-5" />
+            </div>
+            <div className="text-right flex-1">
+              <div className="font-bold">دخول كعضو هيئة تدريس</div>
+              <div className="text-xs opacity-90">حجز المعامل وطلب الأدوات</div>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => setRole('technician')}
+            className="w-full bg-white border-2 border-emerald-100 hover:border-emerald-500 text-emerald-800 p-4 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] group"
+          >
+            <div className="bg-emerald-50 p-2 rounded-lg group-hover:bg-emerald-100 transition-colors">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <div className="text-right flex-1">
+              <div className="font-bold">دخول كفني مختبر</div>
+              <div className="text-xs opacity-75">إدارة الطلبات والتجهيز</div>
+            </div>
+          </button>
+        </div>
+        
+        <p className="mt-8 text-xs text-gray-400">الإصدار التجريبي v1.5</p>
+      </div>
+    </div>
+  );
+}
+
+function TeacherDashboard({ user }) {
+  const [view, setView] = useState('list');
+  const [myBookings, setMyBookings] = useState([]);
+
+  useEffect(() => {
+    // التأكد من وجود المستخدم قبل بدء الاستماع لقاعدة البيانات
+    if (!user) return; 
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'lab_bookings');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sorted = data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setMyBookings(sorted);
+    }, (error) => console.error("Error fetching bookings:", error));
+    return () => unsubscribe();
+  }, [user]);
+
+  return (
+    <div className="py-6">
+      {view === 'list' ? (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-emerald-50">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Calendar className="text-emerald-600" size={24} />
+                جدول الحجوزات
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">تابع حالة طلبات تجهيز المعامل الخاصة بك</p>
+            </div>
+            <button 
+              onClick={() => setView('new-booking')}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 shadow-md transition-all transform hover:translate-y-[-1px]"
+            >
+              <Plus size={20} />
+              <span>حجز جديد</span>
+            </button>
+          </div>
+
+          <div className="grid gap-4">
+            {myBookings.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-dashed border-gray-300">
+                <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <TestTube className="text-gray-300" size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-600">لا توجد حجوزات حالياً</h3>
+                <p className="text-gray-400 mb-6">ابدأ بإنشاء أول طلب لتجهيز المعمل</p>
+                <button 
+                  onClick={() => setView('new-booking')}
+                  className="text-emerald-600 font-bold hover:underline"
+                >
+                  انقر هنا لإنشاء حجز
+                </button>
+              </div>
+            ) : (
+              myBookings.map(booking => (
+                <BookingCard key={booking.id} booking={booking} role="teacher" />
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <NewBookingForm user={user} onCancel={() => setView('list')} onSuccess={() => setView('list')} />
+      )}
+    </div>
+  );
+}
+
+function NewBookingForm({ user, onCancel, onSuccess }) {
+  const [courseId, setCourseId] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [lab, setLab] = useState('');
+  const [items, setItems] = useState([]);
+  const [newItem, setNewItem] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleCourseChange = (e) => {
+    const cid = e.target.value;
+    setCourseId(cid);
+    const course = COURSES.find(c => c.id === cid);
+    if (course) {
+      setItems([...course.defaultItems]);
+    } else {
+      setItems([]);
+    }
+  };
+
+  const addItem = () => {
+    if (newItem.trim()) {
+      setItems([...items, newItem.trim()]);
+      setNewItem('');
+    }
+  };
+
+  const removeItem = (index) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    
+    // التحقق النهائي من وجود المستخدم قبل الإرسال
+    const currentUser = user || auth.currentUser;
+
+    // 1. Validation
+    if (!courseId) return setErrorMsg('الرجاء اختيار المادة الدراسية');
+    if (!lab) return setErrorMsg('الرجاء اختيار المعمل المطلوب');
+    if (!date) return setErrorMsg('الرجاء تحديد التاريخ');
+    if (!time) return setErrorMsg('الرجاء تحديد الوقت');
+    if (!currentUser) return setErrorMsg('خطأ في التعرف على المستخدم، يرجى تحديث الصفحة');
+
+    setLoading(true);
+
+    try {
+      const courseName = COURSES.find(c => c.id === courseId)?.name;
+      
+      // 2. Firestore Add
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'lab_bookings'), {
+        courseName: courseName || 'مادة غير محددة',
+        courseId,
+        date,
+        time,
+        lab,
+        items,
+        status: 'pending',
+        teacherName: 'د. مستخدم (تجريبي)', 
+        teacherId: currentUser.uid, 
+        createdAt: serverTimestamp()
+      });
+      
+      onSuccess();
+    } catch (err) {
+      console.error("Submission Error:", err);
+      setErrorMsg('حدث خطأ أثناء الاتصال بقاعدة البيانات. حاول مرة أخرى.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 max-w-3xl mx-auto animate-fadeIn">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <Plus className="text-emerald-600" size={24} />
+          طلب تجهيز معمل جديد
+        </h3>
+        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 p-2 rounded-full transition-colors">
+          <XCircle size={24} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {errorMsg && (
+          <div className="bg-red-50 border-r-4 border-red-500 p-4 rounded flex items-center gap-2 text-red-700">
+            <AlertCircle size={20} />
+            <span className="font-bold">{errorMsg}</span>
+          </div>
+        )}
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700">المادة الدراسية <span className="text-red-500">*</span></label>
+            <select 
+              value={courseId} 
+              onChange={handleCourseChange}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+            >
+              <option value="">-- اختر المادة --</option>
+              {COURSES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700">المعمل المطلوب <span className="text-red-500">*</span></label>
+            <select 
+              value={lab} 
+              onChange={(e) => setLab(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+            >
+              <option value="">-- اختر القاعة --</option>
+              {LABS.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700">التاريخ <span className="text-red-500">*</span></label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700">الوقت <span className="text-red-500">*</span></label>
+            <input 
+              type="time" 
+              value={time} 
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-bold text-gray-700 mb-2">قائمة التجهيزات والأدوات <span className="text-gray-400 font-normal text-xs">(اختياري)</span></label>
+          <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-inner">
+            <div className="flex gap-2 mb-4">
+              <input 
+                type="text" 
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                placeholder="اكتب اسم الأداة (مثلاً: شرائح زجاجية)"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addItem())}
+              />
+              <button 
+                type="button" 
+                onClick={addItem}
+                className="bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 shadow-sm transition-colors"
+              >
+                إضافة
+              </button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {items.length === 0 && (
+                <div className="text-gray-400 text-sm flex items-center gap-2">
+                  <AlertCircle size={16} />
+                  لم يتم إضافة أدوات بعد (سيتم اعتماد التجهيزات الافتراضية للمادة)
+                </div>
+              )}
+              {items.map((item, idx) => (
+                <span key={idx} className="bg-white border border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 shadow-sm animate-fadeIn">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  {item}
+                  <button type="button" onClick={() => removeItem(idx)} className="text-red-300 hover:text-red-500 hover:bg-red-50 rounded-full p-0.5 transition-colors">
+                    <XCircle size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-6 border-t border-gray-100 gap-3">
+          <button 
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-3 rounded-lg text-gray-600 hover:bg-gray-100 font-medium transition-colors"
+          >
+            إلغاء الأمر
+          </button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 hover:shadow-lg transition-all flex items-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                جاري الإرسال...
+              </>
+            ) : (
+              <>
+                <CheckCircle size={20} />
+                تأكيد وإرسال الطلب
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function TechnicianDashboard({ user }) {
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = collection(db, 'artifacts', appId, 'public', 'data', 'lab_bookings');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const sorted = data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setBookings(sorted);
+    }, (error) => console.error(error));
+    return () => unsubscribe();
+  }, [user]);
+
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
+  const processingCount = bookings.filter(b => b.status === 'processing').length;
+  const readyCount = bookings.filter(b => b.status === 'ready').length;
+
+  return (
+    <div className="py-6 space-y-6">
+      <div className="flex items-center gap-2 text-gray-800 mb-4">
+         <div className="bg-emerald-100 p-2 rounded-lg">
+            <ClipboardList className="text-emerald-700" size={24} />
+         </div>
+         <h2 className="text-2xl font-bold">لوحة تحكم فني المختبر</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-5 rounded-xl shadow-sm border-r-4 border-amber-500 flex items-center justify-between">
+          <div>
+            <div className="text-gray-500 text-sm font-medium mb-1">طلبات جديدة</div>
+            <div className="text-3xl font-bold text-amber-600">{pendingCount}</div>
+          </div>
+          <div className="bg-amber-50 p-3 rounded-full text-amber-500">
+            <AlertCircle size={24} />
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border-r-4 border-blue-500 flex items-center justify-between">
+          <div>
+            <div className="text-gray-500 text-sm font-medium mb-1">قيد التجهيز</div>
+            <div className="text-3xl font-bold text-blue-600">{processingCount}</div>
+          </div>
+          <div className="bg-blue-50 p-3 rounded-full text-blue-500">
+            <FlaskConical size={24} />
+          </div>
+        </div>
+        <div className="bg-white p-5 rounded-xl shadow-sm border-r-4 border-emerald-500 flex items-center justify-between">
+          <div>
+            <div className="text-gray-500 text-sm font-medium mb-1">جاهزة للتسليم</div>
+            <div className="text-3xl font-bold text-emerald-600">{readyCount}</div>
+          </div>
+          <div className="bg-emerald-50 p-3 rounded-full text-emerald-500">
+            <CheckCircle size={24} />
+          </div>
+        </div>
+      </div>
+      
+      <div className="grid gap-4 mt-6">
+        {bookings.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+             <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="text-gray-300" size={32} />
+             </div>
+            <p className="text-gray-500">لا توجد طلبات معلقة حالياً. جميع المختبرات جاهزة!</p>
+          </div>
+        ) : (
+          bookings.map(booking => (
+            <BookingCard key={booking.id} booking={booking} role="technician" />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BookingCard({ booking, role }) {
+  const [loading, setLoading] = useState(false);
+
+  const updateStatus = async (newStatus) => {
+    setLoading(true);
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'lab_bookings', booking.id), {
+        status: newStatus
+      });
+    } catch (err) {
+      console.error(err);
+      const statusMessage = `فشل تحديث الحالة إلى ${newStatus}`;
+      console.error(statusMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statusConfig = {
+    pending: { label: 'طلب جديد', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: AlertCircle },
+    processing: { label: 'قيد التجهيز', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: FlaskConical },
+    ready: { label: 'جاهز بالمعمل', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle },
+  };
+
+  const currentStatus = statusConfig[booking.status] || statusConfig['pending'];
+  const StatusIcon = currentStatus.icon;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-all animate-fadeIn relative overflow-hidden">
+      <div className={`absolute top-0 right-0 w-1 h-full ${booking.status === 'pending' ? 'bg-amber-500' : booking.status === 'processing' ? 'bg-blue-500' : 'bg-emerald-500'}`}></div>
+
+      <div className="flex flex-col md:flex-row justify-between md:items-start gap-6">
+        
+        <div className="flex-1 pr-3">
+          <div className="flex items-center gap-3 mb-3">
+            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 border ${currentStatus.color}`}>
+              <StatusIcon size={14} />
+              {currentStatus.label}
+            </span>
+            <span className="text-sm font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded">
+              {booking.courseName}
+            </span>
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-800 mb-2">{booking.lab}</h3>
+          
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500 mt-2">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={16} className="text-emerald-600" />
+              <span className="font-medium">{booking.date}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Clock size={16} className="text-emerald-600" />
+              <span className="font-medium">{booking.time}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <User size={16} className="text-emerald-600" />
+              <span>{booking.teacherName}</span>
+            </div>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-gray-50">
+            <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 flex items-center gap-1">
+              <FlaskConical size={12} />
+              التجهيزات المطلوبة:
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {booking.items?.length > 0 ? booking.items.map((item, i) => (
+                <span key={i} className="text-xs bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-md text-gray-700 font-medium">
+                  {item}
+                </span>
+              )) : (
+                 <span className="text-xs text-gray-400 italic">لا توجد تجهيزات إضافية</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {role === 'technician' && (
+          <div className="flex flex-row md:flex-col gap-3 pt-4 md:pt-0 md:border-r md:pr-6 border-t md:border-t-0 mt-2 md:mt-0 min-w-[140px] justify-center">
+            {booking.status === 'pending' && (
+              <button 
+                onClick={() => updateStatus('processing')}
+                disabled={loading}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+              >
+                {loading ? 'جاري...' : 'بدء التجهيز'}
+              </button>
+            )}
+            {booking.status === 'processing' && (
+              <button 
+                onClick={() => updateStatus('ready')}
+                disabled={loading}
+                className="w-full bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center gap-2"
+              >
+                {loading ? 'جاري...' : 'اكتمال التجهيز'}
+              </button>
+            )}
+             {booking.status === 'ready' && (
+              <div className="text-emerald-600 text-sm font-bold flex flex-col items-center justify-center gap-1 bg-emerald-50 p-2 rounded-lg border border-emerald-100">
+                <CheckCircle size={24} />
+                <span>تم التسليم</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
