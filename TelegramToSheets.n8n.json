@@ -1,0 +1,104 @@
+{
+  "name": "Telegram to Google Sheets with AI",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "telegramApiToken": "YOUR_TELEGRAM_API_TOKEN"
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_CREDENTIALS_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.example.com/ai-process",
+        "options": {},
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$json.message.text}}"
+            }
+          ]
+        }
+      },
+      "name": "AI Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "id": "b2c3d4e5-f6g7-h8i9-j0k1-l2m3n4o5p6q7"
+    },
+    {
+      "parameters": {
+        "authentication": "credentials",
+        "operation": "append",
+        "documentId": "YOUR_GOOGLE_SHEET_ID",
+        "sheetName": "Sheet1",
+        "fields": {
+          "values": [
+            {
+              "name": "ProcessedText",
+              "value": "={{$json.processed_text}}"
+            }
+          ]
+        }
+      },
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "id": "c3d4e5f6-g7h8-i9j0-k1l2-m3n4o5p6q7r8",
+      "credentials": {
+        "googleApi": {
+          "id": "YOUR_CREDENTIALS_ID",
+          "name": "Google API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "1"
+}
