@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - NexusIoT</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">NexusIoT - Admin</div>
+            <ul>
+                <li><a href="index.html">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="dashboard">
+            <h2>Device Inventory</h2>
+            <button class="btn" id="add-device-btn">Add Device</button>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Device Name</th>
+                            <th>ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="device-table-body">
+                        <!-- Devices will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div id="add-device-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Add New Device</h2>
+            <form id="add-device-form">
+                <div class="form-group">
+                    <label for="device-name">Device Name</label>
+                    <input type="text" id="device-name" name="device-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="serial-number">Serial Number</label>
+                    <input type="text" id="serial-number" name="serial-number" required>
+                </div>
+                <div class="form-group">
+                    <label for="device-type">Device Type</label>
+                    <input type="text" id="device-type" name="device-type" required>
+                </div>
+                <div class="form-group">
+                    <label for="customer-email">Assign to Customer</label>
+                    <input type="email" id="customer-email" name="customer-email" required>
+                </div>
+                <button type="submit" class="btn">Add Device</button>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 NexusIoT. All rights reserved.</p>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
