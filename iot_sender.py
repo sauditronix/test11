@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sends readings to the IoT portal every 1 minute and runs commands returned in the reply.
+"""Sends readings to the IoT portal every 5 minutes and runs commands returned in the reply.
 
 Usage:
     pip install requests
@@ -7,6 +7,7 @@ Usage:
     python3 iot_sender.py
 """
 import os
+import random
 import sys
 import time
 
@@ -14,14 +15,14 @@ import requests
 
 URL = "https://app.iotportal.cc/api/ingest"
 TOKEN = os.environ.get("IOT_TOKEN", "")
-EVERY_S = 60  # the portal accepts at most one message per 5 s
+EVERY_S = 5 * 60  # every 5 minutes; the portal accepts at most one message per 5 s
 
 acks = []  # ids of commands carried out, confirmed in the next post
 
 
 def read_sensors():
-    """Read your sensors here and return the values."""
-    temperature = 0.0  # Temperature (°C)
+    """Mock data: replace with real sensor reads."""
+    temperature = random.uniform(20.0, 35.0)  # Temperature (°C)
     return {"temperature": round(temperature, 1)}
 
 
